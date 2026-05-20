@@ -1106,6 +1106,8 @@ class VoiceAssistant(threading.Thread):
 
         elif action_type == "stop_assistant":
             speak(response)
+            if self.ui_callback:
+                self.ui_callback("exit_app")
             self.stop()
 
         elif action_type == "launch_blinking":

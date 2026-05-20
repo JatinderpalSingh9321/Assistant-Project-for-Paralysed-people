@@ -127,6 +127,12 @@ class App:
         self.root.overrideredirect(True)
         self.root.wm_attributes("-topmost", True)
         
+        # Remove rectangular border by setting background as transparent color
+        self.root.wm_attributes("-transparentcolor", BG)
+        
+        # Make the orb itself slightly transparent
+        self.root.wm_attributes("-alpha", 0.90)
+        
         # Position orb in top-right corner
         screen_w = self.root.winfo_screenwidth()
         x = screen_w - 150
@@ -137,9 +143,13 @@ class App:
         self.orb_canvas = tk.Canvas(self.root, width=100, height=100, bg=BG, highlightthickness=0)
         self.orb_canvas.pack()
 
-        # Draw glowing orb
-        self.orb_canvas.create_oval(10, 10, 90, 90, fill=CARD, outline=ACCENT, width=3)
-        self.orb_label = self.orb_canvas.create_text(50, 50, text="🎙️", font=("Segoe UI", 24), fill=ACCENT)
+        # Draw glowing orb ring
+        self.orb_canvas.create_oval(10, 10, 90, 90, fill="", outline=ACCENT, width=3)
+        try:
+            self.orb_logo_img = tk.PhotoImage(file=os.path.join(os.path.dirname(__file__), "orb_logo.png"))
+            self.orb_label = self.orb_canvas.create_image(50, 50, image=self.orb_logo_img, anchor="center")
+        except Exception:
+            self.orb_label = self.orb_canvas.create_text(50, 50, text="🎙️", font=("Segoe UI", 24), fill=ACCENT)
 
         # Draggable logic
         self.orb_canvas.bind("<ButtonPress-1>", self._start_move)
@@ -164,21 +174,19 @@ class App:
     def _update_orb_state(self, state: str):
         # Must be called on main thread
         def _update():
+            color = ACCENT
             if state == "listening":
-                self.orb_canvas.itemconfig(self.orb_label, fill=SUCCESS)
-                self.orb_canvas.itemconfig(1, outline=SUCCESS)
+                color = SUCCESS
             elif state == "speaking":
-                # Yellow for speaking
-                self.orb_canvas.itemconfig(self.orb_label, fill="#fbbf24")
-                self.orb_canvas.itemconfig(1, outline="#fbbf24")
+                color = "#fbbf24" # Yellow
             elif state == "idle":
-                # Cyan
-                self.orb_canvas.itemconfig(self.orb_label, fill=ACCENT)
-                self.orb_canvas.itemconfig(1, outline=ACCENT)
+                color = ACCENT
             elif state == "sleeping":
-                # Grey
-                self.orb_canvas.itemconfig(self.orb_label, fill=DIM)
-                self.orb_canvas.itemconfig(1, outline=DIM)
+                color = DIM
+            
+            self.orb_canvas.itemconfig(1, outline=color)
+            if self.orb_canvas.type(self.orb_label) == "text":
+                self.orb_canvas.itemconfig(self.orb_label, fill=color)
         self.root.after(0, _update)
 
     # ── Log handler ──────────────────────────────

@@ -18,23 +18,23 @@ import time
 import sys
 import os
 
-# ── Colours ──────────────────────────────────────
-BG       = "#0d1117"
-CARD     = "#161b22"
-CARD2    = "#1c2128"
-BORDER   = "#30363d"
-ACCENT   = "#7c3aed"
-ACCENT2  = "#0ea5e9"
-SUCCESS  = "#22c55e"
-DANGER   = "#ef4444"
-WARNING  = "#f59e0b"
-TEXT     = "#e2e8f0"
-DIM      = "#8b949e"
-FONT     = ("Segoe UI", 10)
-FONT_SM  = ("Segoe UI", 9)
-FONT_LG  = ("Segoe UI", 13, "bold")
-FONT_H   = ("Segoe UI", 16, "bold")
-MONO     = ("Consolas", 9)
+# ── Colours (Neural Interface Design System) ──────
+BG       = "#081425"  # Deep space navy
+CARD     = "#111c2d"  # Surface container low
+CARD2    = "#152031"  # Surface container
+BORDER   = "#1f2a3c"  # Surface container high (for borders)
+ACCENT   = "#00f5c8"  # Primary Cyan-Green (active states)
+ACCENT2  = "#006b56"  # Inverse primary
+SUCCESS  = "#a3e635"  # Terminal green
+DANGER   = "#ffb4ab"  # Error red
+WARNING  = "#ffdad6"  # On-error container
+TEXT     = "#d8e3fb"  # On-surface
+DIM      = "#b9cac3"  # On-surface variant
+FONT     = ("Inter", 10)
+FONT_SM  = ("Inter", 9)
+FONT_LG  = ("Inter", 13, "bold")
+FONT_H   = ("Inter", 16, "bold")
+MONO     = ("JetBrains Mono", 9)
 
 
 # ── Queue-based log handler ───────────────────────
@@ -219,8 +219,8 @@ class App:
                   relief="flat", padx=10, pady=3, cursor="hand2",
                   command=self._clear_log).pack(side="right", padx=12)
 
-        self.log_box = tk.Text(self.root, font=MONO, bg="#0a0e14", fg="#a3e635",
-                               insertbackground=TEXT, relief="flat",
+        self.log_box = tk.Text(self.root, font=MONO, bg="#040e1f", fg=SUCCESS,
+                               insertbackground=ACCENT, relief="flat",
                                state="disabled", wrap="word", padx=10, pady=8)
         self.log_box.pack(fill="both", expand=True, padx=0, pady=0)
 

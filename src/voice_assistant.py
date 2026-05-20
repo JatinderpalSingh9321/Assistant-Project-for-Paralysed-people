@@ -484,9 +484,12 @@ WAKE_PHRASES = [
     "wake up jim", "wake up gym", "wake up gem",
     "wake up tim", "wake up him", "wake up team",
     "wakeup jim", "wake of jim",
-    # "hey jim" variants
+    # "hey jim" / "hi jim" variants
     "hey jim", "hey gym", "hey gem", "hey tim",
+    "hi jim", "hi gym", "hi gem", "hi tim",
     "a jim", "a gym",
+    # "wakey wakey" / "wakey wakey jim" variants
+    "wakey wakey jim", "wakey wakey gym", "wakey wakey gem", "wakey wakey",
     # "wake up" alone (no name needed)
     "wake up",
     # Name only
@@ -508,10 +511,10 @@ def _contains_wake(text: str) -> bool:
     for phrase in WAKE_PHRASES:
         if phrase in text:
             return True
-    # Fuzzy: "jim"/"gym" near "wake"/"hey"/"up"
+    # Fuzzy: "jim"/"gym" near "wake"/"hey"/"up"/"hi"/"wakey"
     words = set(text.split())
     primary = {"jim", "gym", "gem", "tim"}
-    secondary = {"wake", "woke", "up", "hey", "hi"}
+    secondary = {"wake", "woke", "up", "hey", "hi", "wakey"}
     return bool(words & primary) and bool(words & secondary)
 
 

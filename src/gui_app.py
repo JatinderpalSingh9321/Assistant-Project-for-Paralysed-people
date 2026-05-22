@@ -421,13 +421,41 @@ class App:
             easy_drag=True,
             on_top=True,
             transparent=True,
-            background_color='#00000000',
             js_api=self._orb_api,
         )
         self._orb_ready = threading.Event()
 
         def _on_orb_loaded():
             self._orb_ready.set()
+
+            # ── Force true transparency via Win32 API ──
+            # pywebview transparent=True doesn't always eliminate the white
+            # background on Windows/EdgeChromium. We use SetLayeredWindowAttributes
+            # with a color key to punch out the background color.
+            try:
+                import ctypes
+                from ctypes import wintypes
+
+                hwnd = self._orb_window.hwnd          # native window handle
+                GWL_EXSTYLE    = -20
+                WS_EX_LAYERED  = 0x00080000
+                LWA_COLORKEY   = 0x00000001
+
+                user32 = ctypes.windll.user32
+                # Add WS_EX_LAYERED style
+                style = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+                user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style | WS_EX_LAYERED)
+                # Set color key: black (0x00000000) becomes fully transparent
+                user32.SetLayeredWindowAttributes(hwnd, 0x00000000, 0, LWA_COLORKEY)
+            except Exception as e:
+                logging.getLogger("gui").warning(f"Win32 transparency fallback failed: {e}")
+
+            # ── Force the HTML background to the color-key color ──
+            self._orb_window.evaluate_js("""
+                document.documentElement.style.background = '#000000';
+                document.body.style.background = '#000000';
+            """)
+
             # Inject click handlers
             js = """
             document.getElementById('orbWrap').addEventListener('dblclick', function(e) {

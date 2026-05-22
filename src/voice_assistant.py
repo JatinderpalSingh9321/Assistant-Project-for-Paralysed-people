@@ -870,32 +870,35 @@ class VoiceAssistant(threading.Thread):
                 logger.error(f"Search failed: {e}")
 
         elif action == "play_music":
+            is_yt_music = True
             if query.endswith("on youtube music"):
                 query = query[:-16].strip()
-                speak(f"Playing {query} on YouTube Music")
-                encoded = urllib.parse.quote_plus(query)
-                url = f"https://music.youtube.com/search?q={encoded}"
-                try:
-                    subprocess.Popen(f"start {url}", shell=True)
-                except Exception as e:
-                    logger.error(f"YouTube Music play failed: {e}")
             elif query.endswith("on youtube"):
                 query = query[:-10].strip()
-                speak(f"Playing {query} on YouTube")
-                encoded = urllib.parse.quote_plus(query)
-                url = f"https://www.youtube.com/results?search_query={encoded}"
-                try:
+                is_yt_music = False
+
+            speak(f"Playing {query}")
+            try:
+                import urllib.request
+                import urllib.parse
+                import re
+                
+                query_string = urllib.parse.urlencode({"search_query": query})
+                html_content = urllib.request.urlopen("https://www.youtube.com/results?" + query_string)
+                search_results = re.findall(r'watch\?v=([a-zA-Z0-9_-]{11})', html_content.read().decode())
+                
+                if search_results:
+                    video_id = search_results[0]
+                    if is_yt_music:
+                        url = f"https://music.youtube.com/watch?v={video_id}"
+                    else:
+                        url = f"https://www.youtube.com/watch?v={video_id}"
                     subprocess.Popen(f"start {url}", shell=True)
-                except Exception as e:
-                    logger.error(f"YouTube play failed: {e}")
-            else:
-                speak(f"Playing {query}")
-                encoded = urllib.parse.quote_plus(query)
-                url = f"https://music.youtube.com/search?q={encoded}"
-                try:
-                    subprocess.Popen(f"start {url}", shell=True)
-                except Exception as e:
-                    logger.error(f"Music play failed: {e}")
+                else:
+                    speak("I couldn't find that song.")
+            except Exception as e:
+                logger.error(f"Music play failed: {e}")
+                speak("I encountered an error trying to play the music.")
 
         elif action == "find_file":
             speak(f"Searching files for {query}")

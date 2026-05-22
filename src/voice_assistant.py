@@ -71,6 +71,10 @@ except Exception as e:
     _kokoro_tts = None
     logger.error(f"Error initializing Kokoro TTS: {e}")
 
+# Global voice configuration (default to female for softer, more pleasant TTS output)
+VOICE_GENDER = "female"  # "female" (soft) or "male" (robust)
+TTS_VOLUME = 100         # Range: 0 to 100
+
 _speak_lock = threading.Lock()
 
 def speak(text: str):
@@ -80,9 +84,12 @@ def speak(text: str):
     with _speak_lock:
         if _kokoro_tts is not None:
             try:
-                # Use a clear American Male voice by default
-                samples, sample_rate = _kokoro_tts.create(text, voice="am_michael", speed=1.0, lang="en-us")
-                sd.play(samples, sample_rate)
+                # Select a warm, soft female voice or a clear male voice depending on config
+                voice_name = "af_sarah" if VOICE_GENDER == "female" else "am_michael"
+                speed_rate = 0.95 if VOICE_GENDER == "female" else 1.0
+                samples, sample_rate = _kokoro_tts.create(text, voice=voice_name, speed=speed_rate, lang="en-us")
+                volume_multiplier = max(0.0, min(1.0, TTS_VOLUME / 100.0))
+                sd.play(samples * volume_multiplier, sample_rate)
                 sd.wait()
                 return
             except Exception as e:
@@ -99,6 +106,22 @@ def speak(text: str):
                 pass # Already initialized in this thread
             
             voice = win32com.client.Dispatch("SAPI.SpVoice")
+            
+            # Set volume (0 to 100)
+            voice.Volume = int(max(0, min(100, TTS_VOLUME)))
+            
+            # Select a softer female voice description (Microsoft Zira or similar) if female gender is active
+            if VOICE_GENDER == "female":
+                voices = voice.GetVoices()
+                for i in range(voices.Count):
+                    desc = voices.Item(i).GetDescription()
+                    if "Zira" in desc or "Female" in desc or "Hazel" in desc:
+                        voice.Voice = voices.Item(i)
+                        break
+                voice.Rate = -1 # Speak slightly slower to sound more gentle/soft
+            else:
+                voice.Rate = 0
+                        
             voice.Speak(text)
             return
         except ImportError:
@@ -106,13 +129,21 @@ def speak(text: str):
         except Exception as e:
             logger.debug(f"Direct SAPI5 COM speech failed, falling back to PowerShell: {e}")
 
-        # Fallback to PowerShell subprocess
+        # Fallback to PowerShell subprocess (using standard .NET voice hints)
+        gender_setup = ""
+        rate_val = 1
+        if VOICE_GENDER == "female":
+            gender_setup = "$s.SelectVoiceByHints([System.Speech.Synthesis.VoiceGender]::Female);"
+            rate_val = 0 # Slightly slower for a more relaxing, soft presentation
+            
+        volume_setup = f"$s.Volume = {int(max(0, min(100, TTS_VOLUME)))};"
+            
         safe = text.replace("'", "''")
         cmd = (
             f"powershell -Command \""
             f"Add-Type -AssemblyName System.Speech; "
             f"$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
-            f"$s.Rate = 1; "
+            f"$s.Rate = {rate_val}; {gender_setup} {volume_setup} "
             f"$s.Speak('{safe}')\""
         )
         try:
@@ -601,9 +632,11 @@ class VoiceAssistant(threading.Thread):
 
         # Speech recognizer
         self._recognizer = sr.Recognizer()
-        self._recognizer.energy_threshold = 400
-        self._recognizer.dynamic_energy_threshold = False
-        self._recognizer.pause_threshold = 0.8
+        self._recognizer.energy_threshold = 40               # Hyper-sensitive default (was 80/150)
+        self._recognizer.dynamic_energy_threshold = True       # Automatically adjust in changing rooms
+        self._recognizer.dynamic_energy_ratio = 1.04          # Keep threshold very close to noise floor for soft voice (was 1.08/1.15)
+        self._recognizer.phrase_threshold = 0.08              # Ultra-fast wake capture (was 0.10/0.15)
+        self._recognizer.pause_threshold = 0.8                # Delay before concluding speech phrase
 
     def _listen(self, mic, timeout=5, phrase_time_limit=6) -> str:
         """Listen to microphone and return transcribed text."""
@@ -666,7 +699,12 @@ class VoiceAssistant(threading.Thread):
             # Quick ambient noise adjustment so the recogniser calibrates
             logger.info("  Adjusting for ambient noise (1s)...")
             self._recognizer.adjust_for_ambient_noise(mic_source, duration=1)
-            logger.info(f"  Energy threshold set to {self._recognizer.energy_threshold:.0f}")
+            # Clamp the calibrated threshold to max 100 to maintain high sensitivity in all rooms
+            if self._recognizer.energy_threshold > 100:
+                logger.info(f"  Calibrated threshold was {self._recognizer.energy_threshold:.0f}, clamping to 100 for high sensitivity.")
+                self._recognizer.energy_threshold = 100
+            else:
+                logger.info(f"  Energy threshold set to {self._recognizer.energy_threshold:.0f}")
         except OSError as e:
             logger.error(f"  MICROPHONE ERROR: {e}")
             logger.error("  No audio input device found or device is busy.")

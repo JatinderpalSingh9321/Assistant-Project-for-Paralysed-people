@@ -447,6 +447,7 @@ VOICE_COMMANDS = {
     "stop the assistant":  ("stop_assistant", None, "Shutting down. Goodbye!"),
     "turn off the assistant":("stop_assistant", None, "Shutting down. Goodbye!"),
     "turn off assistant":  ("stop_assistant", None, "Shutting down. Goodbye!"),
+    "off the assistant":   ("stop_assistant", None, "Shutting down. Goodbye!"),
     "close assistant":     ("stop_assistant", None, "Shutting down. Goodbye!"),
     "stop assistant":      ("stop_assistant", None, "Shutting down. Goodbye!"),
     "exit application":    ("stop_assistant", None, "Shutting down. Goodbye!"),

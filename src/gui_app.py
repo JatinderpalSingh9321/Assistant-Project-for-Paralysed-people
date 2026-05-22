@@ -383,9 +383,7 @@ class Dashboard:
         
         VOICE_MAP = {
             "Soft Female (Zira)": "zira",
-            "Natural Female (Sarah)": "sarah",
-            "Natural Male (Michael)": "michael",
-            "Robotic Male (David)": "david"
+            "Natural Female (Sarah)": "sarah"
         }
         
         def update_voice(*args):

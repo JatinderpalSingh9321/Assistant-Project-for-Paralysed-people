@@ -169,6 +169,15 @@ class GazeTracker(threading.Thread):
         # Consecutive frames both eyes are closed (for attention gating)
         self._eyes_closed_consecutive_frames = 0
 
+        # ── Cursor freeze during gestures ──
+        self._gesture_active = False  # True when a blink/wink is in progress → cursor frozen
+
+        # ── Sustained wink hold-click (drag) state ──
+        self._HOLD_THRESHOLD_FRAMES = 18  # ~0.6s at 30fps: wink longer than this = hold/drag
+        self._is_holding = False           # True when mouse button is held down (drag mode)
+        self._l_wink_closed_count = 0      # How many frames left eye has been closed in current wink
+        self._r_wink_closed_count = 0      # How many frames right eye has been closed in current wink
+
     def run(self):
         import mediapipe as mp
         from mediapipe.tasks.python import BaseOptions
@@ -256,7 +265,9 @@ class GazeTracker(threading.Thread):
                 self._detect_clicks(lm)
  
                 # ── Calculate gaze from iris position ──
-                if is_attentive:
+                # Freeze cursor when a blink/wink gesture is in progress
+                # to prevent iris landmark jitter from dragging the cursor
+                if is_attentive and not self._gesture_active:
                     gx, gy = self._calc_gaze(lm)
                     self._update_cursor(gx, gy)
                 else:
@@ -355,13 +366,18 @@ class GazeTracker(threading.Thread):
         cannot trigger false positives.
 
         Gesture definitions:
-          Left wink   – left eye closed ≥ MIN_CLOSED_FRAMES while right stays open
-                        → left click fires once the left eye REOPENS
-          Right wink  – right eye closed ≥ MIN_CLOSED_FRAMES while left stays open
-                        → left click fires once the right eye REOPENS
-          Double blink – two complete blink cycles (close+reopen+close+reopen)
-                         both eyes, within DOUBLE_BLINK_WINDOW seconds
-                        → double click
+          Left wink (short)   – left eye closed briefly while right stays open
+                                → left click fires once the left eye REOPENS
+          Right wink (short)  – right eye closed briefly while left stays open
+                                → left click fires once the right eye REOPENS
+          Sustained wink      – one eye closed ≥ HOLD_THRESHOLD_FRAMES while other stays open
+                                → mouse-down (drag); mouse-up on reopen (drop)
+          Double blink        – two complete blink cycles (close+reopen+close+reopen)
+                                 both eyes, within DOUBLE_BLINK_WINDOW seconds
+                                → double click
+
+        Cursor is frozen (self._gesture_active = True) whenever any eye is
+        confirmed-closed to prevent iris landmark jitter from moving the cursor.
         """
         now = time.time()
         l_ear, r_ear = self._per_eye_ear(lm)
@@ -389,11 +405,21 @@ class GazeTracker(threading.Thread):
         r_confirmed_open   = self._r_open_frames   >= self._MIN_OPEN_FRAMES
         both_confirmed_closed = l_confirmed_closed and r_confirmed_closed
 
+        # ── Freeze cursor whenever any eye is closing (prevents drift) ──
+        any_eye_closing = l_confirmed_closed or r_confirmed_closed
+        if any_eye_closing:
+            self._gesture_active = True
+        elif l_confirmed_open and r_confirmed_open:
+            # Only unfreeze when BOTH eyes are confirmed back open
+            self._gesture_active = False
+
         # Clear wink candidates if both eyes are closed (blink in progress)
         both_closed = l_ear < self._l_closed_thresh and r_ear < self._r_closed_thresh
         if both_closed:
             self._l_wink_candidate = False
             self._r_wink_candidate = False
+            self._l_wink_closed_count = 0
+            self._r_wink_closed_count = 0
 
         # ── Double-blink: count complete blink CYCLES (close → reopen) ──
         if both_confirmed_closed and not self._both_confirmed_closed:
@@ -425,29 +451,71 @@ class GazeTracker(threading.Thread):
             # Left wink candidate: left confirmed-closed, right eye open
             if l_confirmed_closed and r_ear > self._r_open_thresh:
                 self._l_wink_candidate = True
+                self._l_wink_closed_count += 1
+
+                # Sustained wink → hold-click (drag) when threshold is reached
+                if (self._l_wink_closed_count == self._HOLD_THRESHOLD_FRAMES
+                        and not self._is_holding):
+                    logger.info(f"  [Hold] Left wink sustained → mouse down (drag)")
+                    pyautogui.mouseDown(button='left', _pause=False)
+                    self._is_holding = True
+                    self._last_click_t = now
+            else:
+                # Left eye not in wink state — reset its closed counter
+                if not l_confirmed_closed:
+                    self._l_wink_closed_count = 0
 
             # Right wink candidate: right confirmed-closed, left eye open
             if r_confirmed_closed and l_ear > self._l_open_thresh:
                 self._r_wink_candidate = True
+                self._r_wink_closed_count += 1
 
-        # Fire wink on reopen (rising edge) when we have a candidate
+                # Sustained wink → hold-click (drag) when threshold is reached
+                if (self._r_wink_closed_count == self._HOLD_THRESHOLD_FRAMES
+                        and not self._is_holding):
+                    logger.info(f"  [Hold] Right wink sustained → mouse down (drag)")
+                    pyautogui.mouseDown(button='left', _pause=False)
+                    self._is_holding = True
+                    self._last_click_t = now
+            else:
+                # Right eye not in wink state — reset its closed counter
+                if not r_confirmed_closed:
+                    self._r_wink_closed_count = 0
+
+        # ── Handle eye reopen: either release hold or fire regular click ──
         if l_ear > self._l_open_thresh:
             if self._l_wink_candidate:
-                if self._l_wink_armed and now - self._last_click_t >= self._click_cooldown:
+                if self._is_holding:
+                    # Sustained wink release → mouse up (drop)
+                    logger.info(f"  [Release] Left eye reopened → mouse up (drop)")
+                    pyautogui.mouseUp(button='left', _pause=False)
+                    self._is_holding = False
+                    self._last_click_t = now
+                elif self._l_wink_armed and now - self._last_click_t >= self._click_cooldown:
+                    # Short wink release → regular left click
                     logger.info(f"  [Click] Left wink release (L_EAR={l_ear:.3f}, R_EAR={r_ear:.3f}) → left click")
                     pyautogui.click(button='left', _pause=False)
                     self._last_click_t = now
                     self._l_wink_armed = False
                 self._l_wink_candidate = False
+                self._l_wink_closed_count = 0
 
         if r_ear > self._r_open_thresh:
             if self._r_wink_candidate:
-                if self._r_wink_armed and now - self._last_click_t >= self._click_cooldown:
+                if self._is_holding:
+                    # Sustained wink release → mouse up (drop)
+                    logger.info(f"  [Release] Right eye reopened → mouse up (drop)")
+                    pyautogui.mouseUp(button='left', _pause=False)
+                    self._is_holding = False
+                    self._last_click_t = now
+                elif self._r_wink_armed and now - self._last_click_t >= self._click_cooldown:
+                    # Short wink release → regular left click
                     logger.info(f"  [Click] Right wink release (L_EAR={l_ear:.3f}, R_EAR={r_ear:.3f}) → left click")
                     pyautogui.click(button='left', _pause=False)
                     self._last_click_t = now
                     self._r_wink_armed = False
                 self._r_wink_candidate = False
+                self._r_wink_closed_count = 0
 
         # Re-arm winks once eye has fully reopened (confirmed-open)
         if l_confirmed_open:

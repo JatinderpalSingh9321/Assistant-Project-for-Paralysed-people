@@ -237,6 +237,27 @@ The dashboard includes:
 
 ---
 
+## 📦 Deployment (Windows Executable Compilation)
+
+JACK can be compiled into a standalone, portable Windows application directory. This bundles all necessary resources (MediaPipe model, Kokoro ONNX voice models, PyQt5 UI elements, and scripts) into a single folder that can run on any Windows system without requiring a Python environment.
+
+### One-Click Executable Building
+
+1. Ensure the virtual environment is set up:
+   ```bash
+   install.bat
+   ```
+2. Run the automated builder script:
+   ```powershell
+   .\scripts\build_exe.bat
+   ```
+3. Once completed, the standalone application folder and executable will be generated at:
+   ```
+   dist/NavTools/NavTools.exe
+   ```
+
+---
+
 ## 🧠 Unified State Management
 
 To prevent cursor drift or voice triggers when the user is not actively looking at the screen, NavTools implements a thread-safe singleton state class, `AttentionState`.

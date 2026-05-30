@@ -111,7 +111,7 @@ The **Gaze Tracker** acts as a virtual mouse by tracking the user's face and eye
 
 ### 2. Jim Interactive Voice Assistant
 
-**Jim** is an offline-first interactive digital companion that processes vocal commands. It features:
+**Jack** is an offline-first interactive digital companion that processes vocal commands. It features:
 * **120+ Voice Commands:** Spanning app launches, browser/tab navigation, file operations, system controls, YouTube Music, window management, and more.
 * **Smart Calculation Parser:** Extracts dynamic spoken expressions (e.g., *"calculate fifteen times three plus four"*) and executes them safely.
 * **Smart Web & Local Search:** Supports targeted phrases (e.g., *"search Google for python guides"*, *"find file design_specifications"*, *"type hello world"*).
@@ -126,10 +126,6 @@ The system renders a **floating, frameless, fully transparent orb** on your scre
 * **Frameless & Transparent:** `Qt.FramelessWindowHint | Qt.WA_TranslucentBackground` — no border, pure floating orb.
 * **Always On Top:** `Qt.WindowStaysOnTopHint` — remains visible above all other windows.
 * **Drag-to-Move:** Click and drag the orb to any screen position; delta coordinates are relayed via `console.log("ORB_DRAG:dx,dy")` to the Python bridge.
-* **Color-coded States:**
-  * 🔵 **Idle** — Dim pulsing blue (waiting for wake word)
-  * 🟢 **Listening** — Bright cyan/green pulse (hearing your command)
-  * 🟡 **Speaking** — Amber glow (Jim is responding)
 * **Double-click** → Opens the Tkinter Settings Dashboard.
 * **Right-click** → Exits the entire application gracefully.
 
@@ -282,7 +278,7 @@ If **Attention Gating** is enabled:
 
 ## 🎙️ Voice Assistant Reference Guide
 
-Jim listens for the wake phrase **"wake up Jim"** or **"hey Jim"**. Once activated, speak any of the following command classes:
+Jim listens for the wake phrase **"hey Jack"**. Once activated, speak any of the following command classes:
 
 ### Browser & Tab Navigation
 | Command | Action |

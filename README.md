@@ -41,7 +41,7 @@
 
 ## 🔬 Overview
 
-**NavTools** is a completely non-invasive, premium assistive control suite that empowers individuals with physical impairments to operate computers hands-free. The system merges **webcam-based eye gaze tracking** with an **offline voice-activated assistant (Jim)**.
+**NavTools** is a completely non-invasive, premium assistive control suite that empowers individuals with physical impairments to operate computers hands-free. The system merges **webcam-based eye gaze tracking** with an **offline voice-activated assistant (Jack)**.
 
 Unlike legacy biosignal-based interfaces (like EEG/EOG), NavTools requires **zero extra hardware**. It leverages standard computer webcams and microphones to deliver smooth cursor movement, rich facial-gesture-based clicking, and highly responsive voice command execution.
 

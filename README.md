@@ -104,8 +104,7 @@ The **Gaze Tracker** acts as a virtual mouse by tracking the user's face and eye
 
 * **Exponential Moving Average (EMA) Smoothing:** Eliminates natural micro-saccades and camera jitter to provide smooth, organic cursor movement.
 * **Eye Aspect Ratio (EAR) Clicking:** Detects natural blinks and winks for full mouse emulation:
-  * 😉 **Left Eye Wink:** Executes a **Left Mouse Click**.
-  * 😉 **Right Eye Wink:** Executes a **Right Mouse Click**.
+  * 😉 **Eye Wink:** Executes a **Left Mouse Click**.
   * 👁️ **Double Blink:** Executes a **Double-Click**.
   * ⏱️ **Extended Hold Blink:** Triggers mouse **Click & Drag**.
 
